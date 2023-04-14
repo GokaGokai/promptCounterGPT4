@@ -1,6 +1,6 @@
 """
 Author: GokaGokai
-Version: 1.1.0
+Version: 1.2.0
 Description: A script to keep track of the number of prompts sent to GPT-4 due to the prompt cap.
 """
 
@@ -10,45 +10,47 @@ import keyboard
 import win32clipboard
 import os
 
-MAXTOKEN = 25
 APP_NAME = "PromptCounterGPT4"
 DATA_DIR = os.path.join(os.getenv("LOCALAPPDATA"), APP_NAME)
 JSON_FILE = os.path.join(DATA_DIR, "message_data.json")
 
-def get_clipboard():
-    win32clipboard.OpenClipboard()
-    data = win32clipboard.GetClipboardData()
-    win32clipboard.CloseClipboard()
-    return data
+# Default
+maxtoken = 25
+resetInterval = 3
 
 
-def write_to_file(data):
+# ------------------
+# Internal functions
+# ------------------   
+def saveMessage(data):
     if not os.path.isfile(JSON_FILE):
-        print("No message data found. A new file has been created.\n")
-
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
 
         with open(JSON_FILE, "w") as f:
-            json.dump({"messages": []}, f, indent=4)
+            json.dump({"maxtoken": 25, "resetInterval": 3, "messages": []}, f, indent=4)
+
+        print("No message data found. A new file has been created.\n")
 
     with open(JSON_FILE, "r+") as f:
         global resetTimeAndTokensBool
         message_data = json.load(f)
+        maxtoken = message_data["maxtoken"]
+        resetInterval = message_data["resetInterval"]
 
         # calculate token_left and reset_time based on previous messages
         current_time = datetime.now()
         latest_message = message_data["messages"][-1] if message_data["messages"] else None
-        if (latest_message and current_time - datetime.strptime(latest_message["reset_time"], '%Y-%m-%d %H:%M:%S.%f') > timedelta(hours=3)) or resetTimeAndTokensBool:
-            token_left = MAXTOKEN - 1
-            reset_time = datetime.now() + timedelta(hours=3)
+        if (latest_message and current_time - datetime.strptime(latest_message["reset_time"], '%Y-%m-%d %H:%M:%S.%f') > timedelta(hours=resetInterval)) or resetTimeAndTokensBool:
+            token_left = maxtoken - 1
+            reset_time = datetime.now() + timedelta(hours=resetInterval)
             resetTimeAndTokensBool = False
         elif latest_message is None:
-            token_left = MAXTOKEN - 1
-            reset_time = latest_message["reset_time"] if latest_message else datetime.now() + timedelta(hours=3)
+            token_left = maxtoken - 1
+            reset_time = latest_message["reset_time"] if latest_message else datetime.now() + timedelta(hours=resetInterval)
         else:
             token_left = latest_message["token_left"] - 1 if latest_message and latest_message["token_left"] > 0 else 0
-            reset_time = latest_message["reset_time"] if latest_message else datetime.now() + timedelta(hours=3)
+            reset_time = latest_message["reset_time"] if latest_message else datetime.now() + timedelta(hours=resetInterval)
 
         # add new message to the message_data
         new_message = {
@@ -64,56 +66,88 @@ def write_to_file(data):
         json.dump(message_data, f, indent=4)
         f.truncate()
 
-        # print current status
-        print(f"Tokens left:    {token_left}")
-        print(f"Current time:   {datetime.now().strftime('%H:%M')}")
-        print(f"Reset time:     {datetime.strptime(str(reset_time), '%Y-%m-%d %H:%M:%S.%f').strftime('%H:%M')}")
-        print(f"Content:        {data}\n")
+        printCurrentStatus(token_left,reset_time,data)
 
-def read_from_file():
+def openMessageDir():
     if not os.path.isfile(JSON_FILE):
         print("No message data found.")
         return
-
     os.startfile(DATA_DIR)
 
 def resetTimeAndTokens():
     global resetTimeAndTokensBool
     resetTimeAndTokensBool = True
-    print("Reset time and tokens")
-    print(f"You have {MAXTOKEN}/{MAXTOKEN} tokens.\n")
+    resetString = "None"
 
+    print("Reset time and tokens on the next save")
+    print(f"You have {maxtoken}/{maxtoken} tokens. (Reset time: {resetString}) \n")
+
+def getClipboard():
+    win32clipboard.OpenClipboard()
+    data = win32clipboard.GetClipboardData()
+    win32clipboard.CloseClipboard()
+    return data
+
+
+# ------
+# Prints
+# ------
+def printShortcut():
+    print("Press 'ctrl+b'       to save message.")
+    print("Press 'ctrl+alt+o'   to open message data dir.")
+    print("Press 'ctrl+alt+t'   to reset time and tokens on the next save.")
+    print("Press 'esc'          to exit.\n")
+
+def printCurrentStatus(token_left, reset_time, data):
+    print(f"Tokens left:    {token_left}")
+    print(f"Current time:   {datetime.now().strftime('%H:%M')}")
+    print(f"Reset time:     {datetime.strptime(str(reset_time), '%Y-%m-%d %H:%M:%S.%f').strftime('%H:%M')}")
+    print(f"Content:        {data}\n")
+
+
+# ------
+# Main
+# ------
 def main():
-    global resetTimeAndTokensBool
+    global maxtoken, resetInterval, resetTimeAndTokensBool
     resetTimeAndTokensBool = False
 
     if not os.path.isfile(JSON_FILE):
-        print("No message data found. A new file has been created.")
-        print(f"You have {MAXTOKEN}/{MAXTOKEN} tokens.\n")
-
+        resetString = "None"
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
-
         with open(JSON_FILE, "w") as f:
-            json.dump({"messages": []}, f, indent=4)
+            json.dump({"maxtoken": maxtoken, "resetInterval": resetInterval, "messages": []}, f, indent=4)
+
+        print("No message data found. A new file has been created.")
+        print(f"You have {maxtoken}/{maxtoken} tokens. (Reset time: {resetString}) \n")
+
     else:
         with open(JSON_FILE, "r+") as f:
             message_data = json.load(f)
+            maxtoken = message_data["maxtoken"]
+            resetInterval = message_data["resetInterval"]
             latest_message = message_data["messages"][-1] if message_data["messages"] else None
+            current_time = datetime.now()
+            resetString = ""
             if latest_message is not None:
                 token_left = latest_message["token_left"]
                 reset_time = latest_message["reset_time"]
-                print(f"You have {token_left}/{MAXTOKEN} tokens. (Reset time: {datetime.strptime(str(reset_time), '%Y-%m-%d %H:%M:%S.%f').strftime('%H:%M')}) \n")
+                resetString = datetime.strptime(str(reset_time), '%Y-%m-%d %H:%M:%S.%f').strftime('%H:%M')
+                if (latest_message and current_time - datetime.strptime(latest_message["reset_time"], '%Y-%m-%d %H:%M:%S.%f') > timedelta(hours=resetInterval)):
+                    token_left = maxtoken
             else:
-                print(f"You have {MAXTOKEN}/{MAXTOKEN} tokens.\n")
+                token_left = maxtoken
+                resetString = "None"
 
-    keyboard.add_hotkey("ctrl+b", lambda: write_to_file(get_clipboard()))
-    keyboard.add_hotkey("ctrl+alt+o", read_from_file)
+            print(f"You have {token_left}/{maxtoken} tokens. (Reset time: {resetString}) \n")
+
+    keyboard.add_hotkey("ctrl+b", lambda: saveMessage(getClipboard()))
+    keyboard.add_hotkey("ctrl+alt+o", openMessageDir)
     keyboard.add_hotkey("ctrl+alt+t", resetTimeAndTokens)
-    print("Press 'ctrl+b' to record clipboard data.")
-    print("Press 'ctrl+alt+o' to open message data.")
-    print("Press 'ctrl+alt+t' to reset time and tokens.")
-    print("Press 'esc' to exit.\n")
+
+    printShortcut()
+
     while True:
         if keyboard.is_pressed("esc"):
             break
