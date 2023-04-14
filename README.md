@@ -16,7 +16,7 @@ This tool helps you **monitor the number of prompts** sent to GPT-4, considering
 
 ## Usage
 
-1. Run *PromptCounterGPT4.py* from the <a href="https://github.com/GokaGokai/promptCounterGPT4/releases.">latest release</a>
+1. Run *PromptCounterGPT4.py* from the <a href="https://github.com/GokaGokai/promptCounterGPT4/releases">latest release</a>
 2. Press `ctrl+b` to save message.
 3. Press `ctrl+alt+o` to open the message data folder containing the JSON file.
 4. Press `ctrl+alt+t` reset time and tokens on the next save.
