@@ -4,16 +4,18 @@ This script helps you monitor the number of prompts sent to GPT-4, considering t
 
 ## Features
 
-- Records clipboard data with a hotkey
 - Displays remaining tokens, current time, and reset time
+- Records clipboard data with a hotkey
 - Opens the message data folder with a hotkey
+- Resets time and tokens with a hotkey
 
 ## Usage
 
 1. Run the script with Python.
 2. Press `ctrl+b` to record the clipboard data as a prompt sent to GPT-4.
-3. Press `ctrl+alt+p` to open the message data folder containing the JSON file.
-4. Press `esc` to exit the script.
+3. Press `ctrl+alt+o` to open the message data folder containing the JSON file.
+4. Press `ctrl+alt+t` to reset time and tokens.
+5. Press `esc` to exit the script.
 
 ## Dependencies
 

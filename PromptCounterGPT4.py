@@ -1,6 +1,6 @@
 """
 Author: GokaGokai
-Version: 1.0.0
+Version: 1.1.0
 Description: A script to keep track of the number of prompts sent to GPT-4 due to the prompt cap.
 """
 
@@ -33,14 +33,16 @@ def write_to_file(data):
             json.dump({"messages": []}, f, indent=4)
 
     with open(JSON_FILE, "r+") as f:
+        global resetTimeAndTokensBool
         message_data = json.load(f)
 
         # calculate token_left and reset_time based on previous messages
         current_time = datetime.now()
         latest_message = message_data["messages"][-1] if message_data["messages"] else None
-        if latest_message and current_time - datetime.strptime(latest_message["reset_time"], '%Y-%m-%d %H:%M:%S.%f') > timedelta(hours=3):
-            token_left = MAXTOKEN
+        if (latest_message and current_time - datetime.strptime(latest_message["reset_time"], '%Y-%m-%d %H:%M:%S.%f') > timedelta(hours=3)) or resetTimeAndTokensBool:
+            token_left = MAXTOKEN - 1
             reset_time = datetime.now() + timedelta(hours=3)
+            resetTimeAndTokensBool = False
         elif latest_message is None:
             token_left = MAXTOKEN - 1
             reset_time = latest_message["reset_time"] if latest_message else datetime.now() + timedelta(hours=3)
@@ -74,11 +76,20 @@ def read_from_file():
         return
 
     os.startfile(DATA_DIR)
-        
+
+def resetTimeAndTokens():
+    global resetTimeAndTokensBool
+    resetTimeAndTokensBool = True
+    print("Reset time and tokens")
+    print(f"You have {MAXTOKEN}/{MAXTOKEN} tokens.\n")
+
 def main():
+    global resetTimeAndTokensBool
+    resetTimeAndTokensBool = False
+
     if not os.path.isfile(JSON_FILE):
         print("No message data found. A new file has been created.")
-        print(f"You have {MAXTOKEN} tokens.\n")
+        print(f"You have {MAXTOKEN}/{MAXTOKEN} tokens.\n")
 
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
@@ -89,13 +100,19 @@ def main():
         with open(JSON_FILE, "r+") as f:
             message_data = json.load(f)
             latest_message = message_data["messages"][-1] if message_data["messages"] else None
-            token_left = latest_message["token_left"]
-            print(f"You have {token_left} tokens.\n")
+            if latest_message is not None:
+                token_left = latest_message["token_left"]
+                reset_time = latest_message["reset_time"]
+                print(f"You have {token_left}/{MAXTOKEN} tokens. (Reset time: {datetime.strptime(str(reset_time), '%Y-%m-%d %H:%M:%S.%f').strftime('%H:%M')}) \n")
+            else:
+                print(f"You have {MAXTOKEN}/{MAXTOKEN} tokens.\n")
 
     keyboard.add_hotkey("ctrl+b", lambda: write_to_file(get_clipboard()))
-    keyboard.add_hotkey("ctrl+alt+p", read_from_file)
+    keyboard.add_hotkey("ctrl+alt+o", read_from_file)
+    keyboard.add_hotkey("ctrl+alt+t", resetTimeAndTokens)
     print("Press 'ctrl+b' to record clipboard data.")
-    print("Press 'ctrl+alt+p' to open message data.")
+    print("Press 'ctrl+alt+o' to open message data.")
+    print("Press 'ctrl+alt+t' to reset time and tokens.")
     print("Press 'esc' to exit.\n")
     while True:
         if keyboard.is_pressed("esc"):
