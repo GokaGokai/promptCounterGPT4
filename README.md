@@ -5,7 +5,7 @@ This tool helps you **monitor the number of prompts** sent to GPT-4, considering
 *Notes:*
 - *GPT-4 currently has a cap of 25 messages every 3 hours.*  
 *If it changes, you can edit it in the JSON file.*
-- *I use the terms 'tokens' and 'prompts' interchangeably*
+- *I use the terms 'tokens', 'messages' and 'prompts' interchangeably*
 ## Features
 
 - Displays remaining tokens, current time, and reset time
